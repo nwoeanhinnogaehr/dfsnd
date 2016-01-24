@@ -47,7 +47,3 @@
 (defun osc (tm hz)
   (sin (* tm hz 2 pi)))
 
-(defun the-sound (tm)
-  (channel-up (osc tm 440)))
-
-(play-vec (sample-region 'the-sound 0.0 5.0))
