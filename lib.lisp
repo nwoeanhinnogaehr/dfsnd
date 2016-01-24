@@ -51,9 +51,11 @@
   (make-array +num-channels+ :initial-element x))
 
 (defun mix-frames (a b)
-  (if (typep a 'vector)
-    (map 'vector '+ a b)
-    (+ a b)))
+  (cond
+    ((and (typep a 'vector) (typep b 'vector)) (map 'vector '+ a b))
+    ((typep a 'vector) (map 'vector (partial '+ b) a))
+    ((typep b 'vector) (map 'vector (partial '+ a) b))
+    (t (+ a b))))
 
 (defun sum-tracks (tracks)
   (if (null (cdr tracks))
