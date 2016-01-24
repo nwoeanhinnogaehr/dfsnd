@@ -2,6 +2,9 @@
 (ql:quickload :cl-portaudio)
 (use-package :portaudio)
 
+(defun partial (func &rest args1)
+  (lambda (&rest args2) (apply func (append args1 args2))))
+
 (defconstant +frames-per-buffer+ 2048)
 (defconstant +sample-rate+ 44100d0)
 (defconstant +sample-format+ :float)
@@ -62,7 +65,7 @@
 
 (defun stereo-disperse-tracks* (tracks angle offset n)
   (let ((mixed (stereo-pan (/ (car tracks) n)
-                           (+ 0.5 (* 0.5 (sin (* angle (* 2 pi))))))))
+                           (+ 0.5 (* 0.5 (sin (* angle 2 pi)))))))
     (if (null (cdr tracks))
       mixed
       (mix-frames mixed
@@ -73,6 +76,9 @@
 
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
+
+(defun sequence-cut (tm tracks interval)
+  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) tm))
 
 (defun osc (tm hz)
   (sin (* tm hz 2 pi)))
