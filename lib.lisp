@@ -2,35 +2,34 @@
 (ql:quickload :cl-portaudio)
 (use-package :portaudio)
 
-(defconstant +frames-per-buffer+ 1024)
+(defconstant +frames-per-buffer+ 2048)
 (defconstant +sample-rate+ 44100d0)
 (defconstant +sample-format+ :float)
-(defconstant +num-channels+ 1)
+(defconstant +num-channels+ 2)
 
 (defun num-channels (x)
   (array-dimension x 0))
 (defun num-samples (x)
   (array-dimension x 1))
 
-(defun get-buffer-region (x start)
-  (let ((o (make-array (list +num-channels+ +frames-per-buffer+))))
-    (dotimes (i +frames-per-buffer+)
-      (dotimes (j +num-channels+)
-        (setf (aref o j i)
-              (let ((idx (+ i (* start +frames-per-buffer+))))
-                (if (<= (num-samples x) idx)
-                  0.0
-                  (aref x j idx))))))
-    o))
+(defun get-buffer-region (in out start)
+  (dotimes (i +frames-per-buffer+)
+    (dotimes (j +num-channels+)
+      (setf (aref out j i)
+            (let ((idx (+ i (* start +frames-per-buffer+))))
+              (if (<= (num-samples in) idx)
+                0.0
+                (aref in j idx)))))))
 
 (defun play-vec (input)
   (format t "Playing ~D samples.~%" (num-samples input))
-  (with-audio
-    (with-default-audio-stream (astream +num-channels+ +num-channels+ :sample-format +sample-format+ :sample-rate +sample-rate+ :frames-per-buffer +frames-per-buffer+)
-                               (dotimes (i (round (/ (num-samples input) +frames-per-buffer+)))
-                                 (write-stream astream
-                                               (merge-channels-into-array astream
-                                                                          (get-buffer-region input i)))))))
+  (let ((buffer (make-array (list +num-channels+ +frames-per-buffer+))))
+    (with-audio
+      (with-default-audio-stream (astream +num-channels+ +num-channels+ :sample-format +sample-format+ :sample-rate +sample-rate+ :frames-per-buffer +frames-per-buffer+)
+                                 (dotimes (i (round (/ (num-samples input) +frames-per-buffer+)))
+                                   (get-buffer-region input buffer i)
+                                   (write-stream astream
+                                                 (merge-channels-into-array astream buffer)))))))
 
 (defun sample-region (fun start end)
   (let* ((num-samples (round (* (- end start) 44100)))
@@ -46,9 +45,9 @@
   (make-array +num-channels+ :initial-element x))
 
 (defun mix-frames (a b)
-  (if (atom a)
-    (+ a b)
-    (map 'vector '+ a b)))
+  (if (typep a 'vector)
+    (map 'vector '+ a b)
+    (+ a b)))
 
 (defun sum-tracks (tracks)
   (if (null (cdr tracks))
@@ -57,6 +56,22 @@
 
 (defun mix-tracks (tracks)
   (/ (sum-tracks tracks) (length tracks)))
+
+(defun stereo-pan (frame pos)
+  (vector (* pos frame) (* (- 1 pos) frame)))
+
+(defun stereo-disperse-tracks* (tracks angle offset n)
+  (let ((mixed (stereo-pan (/ (car tracks) n) (+ 0.5 (* 0.5 (sin (* angle (* 2 pi))))))))
+    (if (null (cdr tracks))
+      mixed
+      (mix-frames mixed
+                  (stereo-disperse-tracks* (cdr tracks)
+                                           (+ angle offset)
+                                           offset
+                                           n)))))
+
+(defun stereo-disperse-tracks (tracks angle)
+  (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
 (defun osc (tm hz)
   (sin (* tm hz 2 pi)))
