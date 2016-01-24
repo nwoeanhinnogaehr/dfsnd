@@ -5,7 +5,7 @@
 (defconstant +frames-per-buffer+ 1024)
 (defconstant +sample-rate+ 44100d0)
 (defconstant +sample-format+ :float)
-(defconstant +num-channels+ 2)
+(defconstant +num-channels+ 1)
 
 (defun num-channels (x)
   (array-dimension x 0))
