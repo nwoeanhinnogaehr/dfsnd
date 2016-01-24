@@ -32,7 +32,7 @@
                                                  (merge-channels-into-array astream buffer)))))))
 
 (defun sample-region (fun start end)
-  (let* ((num-samples (round (* (- end start) 44100)))
+  (let* ((num-samples (round (* (- end start) +sample-rate+)))
          (buffer (make-array (list +num-channels+ num-samples))))
     (dotimes (i num-samples)
       (let ((frame (funcall fun (+ start (/ i +sample-rate+)))))
@@ -61,7 +61,8 @@
   (vector (* pos frame) (* (- 1 pos) frame)))
 
 (defun stereo-disperse-tracks* (tracks angle offset n)
-  (let ((mixed (stereo-pan (/ (car tracks) n) (+ 0.5 (* 0.5 (sin (* angle (* 2 pi))))))))
+  (let ((mixed (stereo-pan (/ (car tracks) n)
+                           (+ 0.5 (* 0.5 (sin (* angle (* 2 pi))))))))
     (if (null (cdr tracks))
       mixed
       (mix-frames mixed
