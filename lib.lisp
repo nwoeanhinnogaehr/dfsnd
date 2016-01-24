@@ -2,9 +2,11 @@
 (ql:quickload :cl-portaudio)
 (use-package :portaudio)
 
+; UTILITIES
 (defun partial (func &rest args1)
   (lambda (&rest args2) (apply func (append args1 args2))))
 
+; PLAYBACK
 (defconstant +frames-per-buffer+ 2048)
 (defconstant +sample-rate+ 44100d0)
 (defconstant +sample-format+ :float)
@@ -44,6 +46,7 @@
                 (coerce (aref frame j) 'single-float)))))
     buffer))
 
+; MIXING
 (defun channel-up (x)
   (make-array +num-channels+ :initial-element x))
 
@@ -77,9 +80,11 @@
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
+; SEQUENCING
 (defun sequence-cut (tm tracks interval)
   (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) (mod tm interval)))
 
+; SYNTHESIS
 (defun osc (hz tm)
   (sin (* hz tm 2 pi)))
 
