@@ -78,8 +78,19 @@
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
 (defun sequence-cut (tm tracks interval)
-  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) tm))
+  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) (mod tm interval)))
 
-(defun osc (tm hz)
-  (sin (* tm hz 2 pi)))
+(defun osc (hz tm)
+  (sin (* hz tm 2 pi)))
 
+(defun tri (hz tm)
+  (- (abs (- (* 4 (mod (* hz tm) 1)) 2)) 1))
+
+(defun squ (hz tm)
+  (- (* 2 (round (mod (* hz tm) 1))) 1))
+
+(defun saw (hz tm)
+  (- (* 2 (mod (* hz tm) 1)) 1))
+
+(defun pulse (hz width tm)
+  (- (* 2 (floor (+ width (mod (* hz tm) 1)))) 1))

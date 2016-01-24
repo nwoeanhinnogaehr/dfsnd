@@ -3,8 +3,13 @@
 (defun the-sound (tm)
   (channel-up (sequence-cut tm
                             (map 'vector
-                                 (lambda (hz) (partial 'osc hz))
-                                 '(440 220 280 320 500))
-                            1/6)))
+                                 (lambda (p) (apply 'partial p))
+                                 (list (list 'pulse 120 (abs (osc tm 1)))
+                                       (list 'pulse 300 (abs (osc tm 1/2)))
+                                       (list 'pulse 160 (abs (osc tm 1/3)))
+                                       (list 'tri 140)
+                                       (list 'pulse 60 (abs (osc tm 1/4)))
+                                       (list 'pulse 60 (abs (osc tm 1/4)))))
+                            1/4)))
 
-(play-vec (sample-region 'the-sound 0.0 5.0))
+(play-vec (sample-region 'the-sound 0.0 10.0))
