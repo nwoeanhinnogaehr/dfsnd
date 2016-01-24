@@ -35,12 +35,19 @@
   (let* ((num-samples (round (* (- end start) 44100)))
          (buffer (make-array (list +num-channels+ num-samples))))
     (dotimes (i num-samples)
-      (dotimes (j +num-channels+)
-        (setf (aref buffer j i)
-              (coerce (funcall fun j (+ start (/ i +sample-rate+))) 'single-float))))
+      (let ((frame (funcall fun (+ start (/ i +sample-rate+)))))
+        (dotimes (j +num-channels+)
+          (setf (aref buffer j i)
+                (coerce (aref frame j) 'single-float)))))
     buffer))
 
-(defun sine (a x)
-  (sin (* x (* (+ a 0.5) (sin (* x 40))) 100 2 3.14159)))
+(defun channel-up (x)
+  (make-array +num-channels+ :initial-element x))
 
-(play-vec (sample-region 'sine 0.0 5.0))
+(defun osc (tm hz)
+  (sin (* tm hz 2 pi)))
+
+(defun the-sound (tm)
+  (channel-up (osc tm 440)))
+
+(play-vec (sample-region 'the-sound 0.0 5.0))
