@@ -28,8 +28,9 @@
   (with-audio
     (with-default-audio-stream (astream +num-channels+ +num-channels+ :sample-format +sample-format+ :sample-rate +sample-rate+ :frames-per-buffer +frames-per-buffer+)
                                (dotimes (i (round (/ (num-samples input) +frames-per-buffer+)))
-                                 (write-stream astream (merge-channels-into-array astream
-                                                                                  (get-buffer-region input i)))))))
+                                 (write-stream astream
+                                               (merge-channels-into-array astream
+                                                                          (get-buffer-region input i)))))))
 
 (defun sample-region (fun start end)
   (let* ((num-samples (round (* (- end start) 44100)))
@@ -43,6 +44,19 @@
 
 (defun channel-up (x)
   (make-array +num-channels+ :initial-element x))
+
+(defun mix-frames (a b)
+  (if (atom a)
+    (+ a b)
+    (map 'vector '+ a b)))
+
+(defun sum-tracks (tracks)
+  (if (null (cdr tracks))
+    (car tracks)
+    (mix-frames (car tracks) (sum-tracks (cdr tracks)))))
+
+(defun mix-tracks (tracks)
+  (/ (sum-tracks tracks) (length tracks)))
 
 (defun osc (tm hz)
   (sin (* tm hz 2 pi)))
