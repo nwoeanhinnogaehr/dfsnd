@@ -82,9 +82,28 @@
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
+(defun fade (frame fader)
+  (if (typep frame 'vector)
+    (map 'vector (partial '* fader) frame)
+    (* frame fader)))
+
 ; SEQUENCING
 (defun sequence-cut (tm tracks interval)
+  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) tm))
+
+(defun sequence-cut-zero-index (tm tracks interval)
   (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) (mod tm interval)))
+
+(defun sequence-crossmix (tm tracks interval crossover mixer)
+  (if (and (> crossover (mod tm interval)) (not (> crossover tm)))
+    (let ((fade (/ (mod (mod tm interval) crossover) crossover)))
+      (mix-frames (funcall mixer
+                           (sequence-cut tm tracks interval)
+                           fade)
+                  (funcall mixer
+                           (sequence-cut (+ tm interval) tracks interval)
+                           (- 1 fade))))
+    (funcall mixer (sequence-cut tm tracks interval) 1)))
 
 ; SYNTHESIS
 (defun osc (hz tm)
