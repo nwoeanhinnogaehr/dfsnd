@@ -95,15 +95,13 @@
   (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) (mod tm interval)))
 
 (defun sequence-crossmix (tm tracks interval crossover mixer)
-  (if (and (> crossover (mod tm interval)) (not (> crossover tm)))
-    (let ((fade (/ (mod (mod tm interval) crossover) crossover)))
-      (mix-frames (funcall mixer
-                           (sequence-cut tm tracks interval)
-                           fade)
-                  (funcall mixer
-                           (sequence-cut (+ tm interval) tracks interval)
-                           (- 1 fade))))
-    (funcall mixer (sequence-cut tm tracks interval) 1)))
+  (let ((fade (min 1 (/ (mod tm interval) (* interval crossover)))))
+    (mix-frames (funcall mixer
+                         (sequence-cut tm tracks interval)
+                         (- 1 fade))
+                (funcall mixer
+                         (sequence-cut (+ tm interval) tracks interval)
+                         fade))))
 
 ; SYNTHESIS
 (defun osc (hz tm)
