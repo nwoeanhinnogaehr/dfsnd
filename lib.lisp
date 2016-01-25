@@ -4,6 +4,11 @@
 (defun partial (func &rest args1)
   (lambda (&rest args2) (apply func (append args1 args2))))
 
+(defun to-signed (x)
+  (- 1 (* 2 x)))
+(defun to-unsigned (x)
+  (+ 0.5 (* 0.5 x)))
+
 ; PLAYBACK
 (defconstant +sample-rate+ 44100d0)
 (defconstant +num-channels+ 2)
@@ -69,7 +74,7 @@
 
 (defun stereo-disperse-tracks* (tracks angle offset n)
   (let ((mixed (stereo-pan (/ (car tracks) n)
-                           (+ 0.5 (* 0.5 (sin (* angle 2 pi)))))))
+                           (to-unsigned (sin (* angle 2 pi))))))
     (if (null (cdr tracks))
       mixed
       (mix-frames mixed
@@ -107,13 +112,13 @@
   (sin (* hz tm 2 pi)))
 
 (defun tri (hz tm)
-  (- (abs (- (* 4 (mod (* hz tm) 1)) 2)) 1))
+  (to-signed (abs (to-signed (mod (* hz tm) 1)))))
 
 (defun squ (hz tm)
-  (- (* 2 (round (mod (* hz tm) 1))) 1))
+  (to-signed (round (mod (* hz tm) 1))))
 
 (defun saw (hz tm)
-  (- (* 2 (mod (* hz tm) 1)) 1))
+  (to-signed (mod (* hz tm) 1)))
 
 (defun pulse (hz width tm)
-  (- (* 2 (floor (+ width (mod (* hz tm) 1)))) 1))
+  (to-signed (floor (+ width (mod (* hz tm) 1)))))
