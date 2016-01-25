@@ -1,15 +1,11 @@
-(load "~/quicklisp/setup.lisp")
-(ql:quickload :cl-portaudio)
-(use-package :portaudio)
+(ql:quickload :cl-sndfile)
 
 ; UTILITIES
 (defun partial (func &rest args1)
   (lambda (&rest args2) (apply func (append args1 args2))))
 
 ; PLAYBACK
-(defconstant +frames-per-buffer+ 2048)
 (defconstant +sample-rate+ 44100d0)
-(defconstant +sample-format+ :float)
 (defconstant +num-channels+ 2)
 
 (defun num-channels (x)
@@ -17,24 +13,20 @@
 (defun num-samples (x)
   (array-dimension x 1))
 
-(defun get-buffer-region (in out start)
-  (dotimes (i +frames-per-buffer+)
-    (dotimes (j +num-channels+)
-      (setf (aref out j i)
-            (let ((idx (+ i (* start +frames-per-buffer+))))
-              (if (<= (num-samples in) idx)
-                0.0
-                (aref in j idx)))))))
+(defun get-frame-list (input i j)
+  (if (= j 0)
+    nil
+    (cons (aref input (- j 1) i) (get-frame-list input i (- j 1)))))
 
-(defun play-vec (input)
-  (format t "Playing ~D samples.~%" (num-samples input))
-  (let ((buffer (make-array (list +num-channels+ +frames-per-buffer+))))
-    (with-audio
-      (with-default-audio-stream (astream +num-channels+ +num-channels+ :sample-format +sample-format+ :sample-rate +sample-rate+ :frames-per-buffer +frames-per-buffer+)
-                                 (dotimes (i (round (/ (num-samples input) +frames-per-buffer+)))
-                                   (get-buffer-region input buffer i)
-                                   (write-stream astream
-                                                 (merge-channels-into-array astream buffer)))))))
+(defun write-vec (input filename)
+  (sf:with-open-sndfile (snd filename
+                             :direction :output
+                             :chanls +num-channels+
+                             :sr (floor +sample-rate+))
+                        (sf:write-frames-float
+                          (loop for i from 0 below (num-samples input)
+                                append (get-frame-list input i +num-channels+))
+                          snd)))
 
 (defun sample-region (fun start end)
   (let* ((num-samples (round (* (- end start) +sample-rate+)))
