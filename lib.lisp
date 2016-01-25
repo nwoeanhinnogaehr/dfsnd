@@ -50,12 +50,19 @@
 (defun channel-up (x)
   (make-array +num-channels+ :initial-element x))
 
-(defun mix-frames (a b)
-  (cond
-    ((and (typep a 'vector) (typep b 'vector)) (map 'vector '+ a b))
-    ((typep a 'vector) (map 'vector (partial '+ b) a))
-    ((typep b 'vector) (map 'vector (partial '+ a) b))
-    (t (+ a b))))
+(defgeneric mix-frames (a b))
+
+(defmethod mix-frames ((a number) (b number))
+  (+ a b))
+
+(defmethod mix-frames ((a vector) (b number))
+  (map 'vector (partial '+ b) a))
+
+(defmethod mix-frames ((a number) (b vector))
+  (mix-frames b a))
+
+(defmethod mix-frames ((a vector) (b vector))
+  (map 'vector '+ a b))
 
 (defun sum-tracks (tracks)
   (if (null (cdr tracks))
