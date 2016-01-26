@@ -4,6 +4,15 @@
 (defun partial (func &rest args1)
   (lambda (&rest args2) (apply func (append args1 args2))))
 
+(defun flatten (obj)
+  (do* ((result (list obj))
+        (node result))
+    ((null node) (delete nil result))
+    (cond ((consp (car node))
+           (when (cdar node) (push (cdar node) (cdr node)))
+           (setf (car node) (caar node)))
+          (t (setf node (cdr node))))))
+
 (defun to-signed (x)
   (- 1 (* 2 x)))
 (defun to-unsigned (x)
@@ -13,53 +22,35 @@
 (defconstant +sample-rate+ 44100d0)
 (defconstant +num-channels+ 2)
 
-(defun num-channels (x)
-  (array-dimension x 0))
-(defun num-samples (x)
-  (array-dimension x 1))
-
-(defun get-frame-list (input i j)
-  (if (= j 0)
-    nil
-    (cons (aref input (- j 1) i) (get-frame-list input i (- j 1)))))
-
 (defun write-vec (input filename)
   (sf:with-open-sndfile (snd filename
                              :direction :output
                              :chanls +num-channels+
                              :sr (floor +sample-rate+))
-                        (sf:write-frames-float
-                          (loop for i from 0 below (num-samples input)
-                                append (get-frame-list input i +num-channels+))
-                          snd)))
+                        (sf:write-frames-float (flatten input) snd)))
 
 (defun sample-region (fun start end)
-  (let* ((num-samples (round (* (- end start) +sample-rate+)))
-         (buffer (make-array (list +num-channels+ num-samples))))
-    (dotimes (i num-samples)
-      (let ((frame (funcall fun (+ start (/ i +sample-rate+)))))
-        (dotimes (j +num-channels+)
-          (setf (aref buffer j i)
-                (coerce (aref frame j) 'single-float)))))
-    buffer))
+  (loop for i from 0 below (round (* (- end start) +sample-rate+))
+        collect (map 'list (lambda (x) (coerce x 'single-float))
+                     (funcall fun (+ start (/ i +sample-rate+))))))
 
 ; MIXING
 (defun channel-up (x)
-  (make-array +num-channels+ :initial-element x))
+  (su:dup x +num-channels+))
 
 (defgeneric mix-frames (a b))
 
 (defmethod mix-frames ((a number) (b number))
   (+ a b))
 
-(defmethod mix-frames ((a vector) (b number))
-  (map 'vector (partial '+ b) a))
+(defmethod mix-frames ((a list) (b number))
+  (map 'list (partial '+ b) a))
 
-(defmethod mix-frames ((a number) (b vector))
+(defmethod mix-frames ((a number) (b list))
   (mix-frames b a))
 
-(defmethod mix-frames ((a vector) (b vector))
-  (map 'vector '+ a b))
+(defmethod mix-frames ((a list) (b list))
+  (map 'list '+ a b))
 
 (defun sum-tracks (tracks)
   (if (null (cdr tracks))
@@ -70,10 +61,10 @@
   (/ (sum-tracks tracks) (length tracks)))
 
 (defun stereo-pan (frame pos)
-  (vector (* pos frame) (* (- 1 pos) frame)))
+  (list (* pos frame) (* (- 1 pos) frame)))
 
 (defun stereo-disperse-tracks* (tracks angle offset n)
-  (let ((mixed (stereo-pan (/ (car tracks) n)
+  (let ((mixed (stereo-pan (car tracks)
                            (to-unsigned (sin (* angle 2 pi))))))
     (if (null (cdr tracks))
       mixed
@@ -86,10 +77,23 @@
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
-(defun fade (frame fader)
-  (if (typep frame 'vector)
-    (map 'vector (partial '* fader) frame)
-    (* frame fader)))
+(defgeneric fade (frame fader))
+
+(defmethod fade ((frame number) (fader number))
+  (* frame fader))
+
+(defmethod fade ((frame list) (fader number))
+  (map 'list (partial '* fader) frame))
+
+(defmethod fade ((frame list) (fader list))
+  (map 'list '* frame fader))
+
+(defun normalize (samples)
+  (let ((maximum (reduce 'max (map 'list 'abs (flatten samples)))))
+    (if (= 0 maximum)
+      samples
+      (loop for frame in samples
+            collect (fade frame (/ 1 maximum))))))
 
 ; SEQUENCING
 (defun sequence-cut (tm tracks interval)

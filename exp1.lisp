@@ -1,6 +1,10 @@
 (load "lib.lisp")
 
-(defun the-sound (tm)
-  (channel-up (saw 128 tm)))
+(defun saw-harmonics (hz tm n)
+  (loop for i from 1 to n
+        collect (/ (osc (* hz i) tm) i)))
 
-(write-vec (sample-region 'the-sound 0.0 10.0) "out.wav")
+(defun the-sound (tm)
+  (stereo-disperse-tracks* (saw-harmonics 64 tm 200) tm (* tm 0.2) 200))
+
+(write-vec (normalize (sample-region 'the-sound 0.0 5.0)) "out.wav")
