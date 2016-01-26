@@ -39,38 +39,34 @@
 (defun channel-up (x)
   (su:dup x +num-channels+))
 
-(defgeneric fade (frame fader))
+(defgeneric frame-apply (func frame &rest args))
 
-(defmethod fade ((frame number) (fader number))
-  (* frame fader))
+(defmethod frame-apply (func (frame number) &rest args)
+  (apply func (cons frame args)))
 
-(defmethod fade ((frame list) (fader number))
-  (map 'list (partial '* fader) frame))
+(defun non-atom-apply (func)
+  (lambda (x)
+    (if (atom x)
+      x
+      (funcall func x))))
 
-(defmethod fade ((frame list) (fader list))
-  (map 'list '* frame fader))
+(defmethod frame-apply (func (frame list) &rest args)
+  (and frame
+       (cons (apply func
+                    (cons (car frame)
+                          (map 'list (non-atom-apply 'car) args)))
+             (apply 'frame-apply
+                    (append (list func (cdr frame))
+                            (map 'list (non-atom-apply 'cdr) args))))))
 
-(defgeneric mix-frames (a b))
+(defun fade (frame fader)
+  (frame-apply '* frame fader))
 
-(defmethod mix-frames ((a number) (b number))
-  (+ a b))
+(defun sum-frames (&rest frames)
+  (apply 'frame-apply (cons '+ frames)))
 
-(defmethod mix-frames ((a list) (b number))
-  (map 'list (partial '+ b) a))
-
-(defmethod mix-frames ((a number) (b list))
-  (mix-frames b a))
-
-(defmethod mix-frames ((a list) (b list))
-  (map 'list '+ a b))
-
-(defun sum-tracks (tracks)
-  (if (null (cdr tracks))
-    (car tracks)
-    (mix-frames (car tracks) (sum-tracks (cdr tracks)))))
-
-(defun mix-tracks (tracks)
-  (fade (sum-tracks tracks) (/ 1 (length tracks))))
+(defun mix-frames (&rest frames)
+  (fade (apply 'sum-frames frames) (/ 1 (length frames))))
 
 (defun stereo-pan (frame pos)
   (list (* pos frame) (* (- 1 pos) frame)))
@@ -91,10 +87,13 @@
 
 ; SEQUENCING
 (defgeneric sref (seq idx))
+
 (defmethod sref ((seq vector) idx)
   (aref seq (floor (mod idx (length seq)))))
+
 (defmethod sref ((seq list) idx)
   (nth (floor (mod idx (length seq))) seq))
+
 (defmethod sref ((seq function) idx)
   (funcall seq (floor idx)))
 
