@@ -4,15 +4,6 @@
 (defun partial (func &rest args1)
   (lambda (&rest args2) (apply func (append args1 args2))))
 
-(defun flatten (obj)
-  (do* ((result (list obj))
-        (node result))
-    ((null node) (delete nil result))
-    (cond ((consp (car node))
-           (when (cdar node) (push (cdar node) (cdr node)))
-           (setf (car node) (caar node)))
-          (t (setf node (cdr node))))))
-
 (defun to-signed (x)
   (- 1 (* 2 x)))
 (defun to-unsigned (x)
@@ -27,12 +18,19 @@
                              :direction :output
                              :chanls +num-channels+
                              :sr (floor +sample-rate+))
-                        (sf:write-frames-float (flatten input) snd)))
+                        (sf:write-frames-float input snd)))
 
 (defun sample-region (fun start end)
   (loop for i from 0 below (round (* (- end start) +sample-rate+))
-        collect (map 'list (lambda (x) (coerce x 'single-float))
-                     (funcall fun (+ start (/ i +sample-rate+))))))
+        append (map 'list (lambda (x) (coerce x 'single-float))
+                    (funcall fun (+ start (/ i +sample-rate+))))))
+
+(defun normalize (samples)
+  (let ((maximum (reduce 'max (map 'list 'abs samples))))
+    (if (= 0 maximum)
+      samples
+      (loop for frame in samples
+            collect (/ frame maximum)))))
 
 ; MIXING
 (defun channel-up (x)
@@ -87,13 +85,6 @@
 
 (defmethod fade ((frame list) (fader list))
   (map 'list '* frame fader))
-
-(defun normalize (samples)
-  (let ((maximum (reduce 'max (map 'list 'abs (flatten samples)))))
-    (if (= 0 maximum)
-      samples
-      (loop for frame in samples
-            collect (fade frame (/ 1 maximum))))))
 
 ; SEQUENCING
 (defun sequence-cut (tm tracks interval)
