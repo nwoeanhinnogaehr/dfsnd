@@ -39,6 +39,17 @@
 (defun channel-up (x)
   (su:dup x +num-channels+))
 
+(defgeneric fade (frame fader))
+
+(defmethod fade ((frame number) (fader number))
+  (* frame fader))
+
+(defmethod fade ((frame list) (fader number))
+  (map 'list (partial '* fader) frame))
+
+(defmethod fade ((frame list) (fader list))
+  (map 'list '* frame fader))
+
 (defgeneric mix-frames (a b))
 
 (defmethod mix-frames ((a number) (b number))
@@ -59,7 +70,7 @@
     (mix-frames (car tracks) (sum-tracks (cdr tracks)))))
 
 (defun mix-tracks (tracks)
-  (/ (sum-tracks tracks) (length tracks)))
+  (fade (sum-tracks tracks) (/ 1 (length tracks))))
 
 (defun stereo-pan (frame pos)
   (list (* pos frame) (* (- 1 pos) frame)))
@@ -78,31 +89,22 @@
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
-(defgeneric fade (frame fader))
-
-(defmethod fade ((frame number) (fader number))
-  (* frame fader))
-
-(defmethod fade ((frame list) (fader number))
-  (map 'list (partial '* fader) frame))
-
-(defmethod fade ((frame list) (fader list))
-  (map 'list '* frame fader))
-
 ; SEQUENCING
-(defun sequence-cut (tm tracks interval)
-  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) tm))
+(defgeneric sequence-cut (idx tracks interval tm))
 
-(defun sequence-cut-zero-index (tm tracks interval)
-  (funcall (aref tracks (mod (floor (/ tm interval)) (length tracks))) (mod tm interval)))
+(defmethod sequence-cut (idx (tracks vector) interval tm)
+  (funcall (aref tracks (mod (floor (/ idx interval)) (length tracks))) tm))
+
+(defmethod sequence-cut (idx tracks interval tm)
+  (funcall (funcall tracks (floor (/ idx interval))) tm))
 
 (defun sequence-crossmix (tm tracks interval crossover mixer)
   (let ((fade (min 1 (/ (mod tm interval) (* interval crossover)))))
     (mix-frames (funcall mixer
-                         (sequence-cut tm tracks interval)
+                         (sequence-cut tm tracks interval tm)
                          (- 1 fade))
                 (funcall mixer
-                         (sequence-cut (+ tm interval) tracks interval)
+                         (sequence-cut (+ tm interval) tracks interval tm)
                          fade))))
 
 ; SYNTHESIS
@@ -120,3 +122,10 @@
 
 (defun pulse (hz width tm)
   (to-signed (floor (+ width (fract (* hz tm))))))
+
+(defun noise ()
+  (- (random 2.0) 1))
+
+; SCALES
+(defun note-freq (note scale)
+  (* (expt 2 (/ note scale)) 256))
