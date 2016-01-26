@@ -1,35 +1,32 @@
 (load "lib.lisp")
 
-(defun snare (tm)
+(defun snare (vel len tm)
   (fade
     (list (noise) (noise))
-    (expt (+ 1 tm) -20)))
+    (* vel (expt (+ 1 tm) len))))
 
-(defun kick (tm)
+(defun hat (vel len tm)
+  (fade
+    (mix-frames -0.7 (list (max 0.7 (noise)) (max 0.7 (noise))))
+    (* vel (expt (+ 1 tm) len))))
+
+(defun kick (vel tm)
   (channel-up
     (fade
       (osc (note-freq (+ (* 4 (expt (+ 1 tm) -50)) -2) 1) tm)
-      (expt (+ 1 tm) -5))))
+      (* vel (expt (+ 1 tm) -5)))))
 
-(defun synth (tm)
-  (let ((scale 12))
-    (stereo-disperse-tracks
-      (loop for i from 1 below 5
-            collect (sequence-crossmix tm
-                                       (lambda (n)
-                                         (partial 'saw
-                                                  (note-freq
-                                                    (+ (- (* 1 scale)) (* i 6) (floor (* scale (tri n 1/16))))
-                                                    scale)))
-                                       (expt 2 (- i))
-                                       (expt 2 (+ -4 i))
-                                       'fade))
-      (* tm 1/2))))
+(defun beep (note vel spd tm)
+  (let ((hz (note-freq (- note 10) 4)))
+    (fade
+      (stereo-disperse-tracks (list (pulse hz 0.5 tm) (pulse hz (fract tm) tm)) tm)
+      (* vel (to-unsigned (squ spd tm))))))
 
 (defun the-sound (tm)
   (mix-tracks (list
-                (synth tm)
-                (snare (fract (+ tm 0.5)))
-                (kick (fract tm)))))
+                (loop-beat '#((0 0.2 2) (0 0 0) (2 0.4 3) (1 0.3 7) (1 0.3 5)) 'beep 4/5 tm)
+                (loop-beat '#((1 -50) (0 0) (0.5 -10) (0.25 -40) (0 0)) 'snare 1/4 tm)
+                (loop-beat '#((1 -100) (0 0) (0.25 -100) (1 -70)) 'hat 1/7 tm)
+                (loop-beat '#((1) (0) (0) (0.5) (0) (0.5) (0) (1)) 'kick 1/4 tm))))
 
-(write-vec (normalize (sample-region 'the-sound 0.0 8.0)) "out.wav")
+(write-vec (normalize (sample-region 'the-sound 0.0 12.0)) "out.wav")

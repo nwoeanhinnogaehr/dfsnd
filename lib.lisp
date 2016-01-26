@@ -107,6 +107,13 @@
                          (sequence-cut (+ tm interval) tracks interval tm)
                          fade))))
 
+(defun loop-beat (beat fun interval tm)
+  (apply fun
+         (append (aref beat
+                       (mod (floor (/ tm interval))
+                            (length beat)))
+                 (list (mod tm interval)))))
+
 ; SYNTHESIS
 (defun osc (hz tm)
   (sin (* hz tm 2 pi)))
