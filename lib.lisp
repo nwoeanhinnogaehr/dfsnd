@@ -134,5 +134,5 @@
   (- (random 2.0) 1))
 
 ; SCALES
-(defun note-freq (note scale)
-  (* (expt 2 (/ note scale)) 256))
+(defun note-freq (note scale &key (base-freq 256) (base 2) (octave 0))
+  (* (expt base (/ (+ note (* scale octave)) scale)) base-freq))
