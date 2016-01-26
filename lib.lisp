@@ -90,13 +90,16 @@
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
 ; SEQUENCING
-(defgeneric sequence-cut (idx tracks interval tm))
+(defgeneric sref (seq idx))
+(defmethod sref ((seq vector) idx)
+  (aref seq (floor (mod idx (length seq)))))
+(defmethod sref ((seq list) idx)
+  (nth (floor (mod idx (length seq))) seq))
+(defmethod sref ((seq function) idx)
+  (funcall seq (floor idx)))
 
-(defmethod sequence-cut (idx (tracks vector) interval tm)
-  (funcall (aref tracks (mod (floor (/ idx interval)) (length tracks))) tm))
-
-(defmethod sequence-cut (idx tracks interval tm)
-  (funcall (funcall tracks (floor (/ idx interval))) tm))
+(defun sequence-cut (idx tracks interval tm)
+  (funcall (sref tracks (/ idx interval)) tm))
 
 (defun sequence-crossmix (tm tracks interval crossover mixer)
   (let ((fade (min 1 (/ (mod tm interval) (* interval crossover)))))
@@ -109,9 +112,7 @@
 
 (defun loop-beat (beat fun interval tm)
   (apply fun
-         (append (aref beat
-                       (mod (floor (/ tm interval))
-                            (length beat)))
+         (append (sref beat (/ tm interval))
                  (list (mod tm interval)))))
 
 ; SYNTHESIS
