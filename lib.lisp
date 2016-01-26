@@ -9,6 +9,9 @@
 (defun to-unsigned (x)
   (+ 0.5 (* 0.5 x)))
 
+(defun fract (x)
+  (mod x 1))
+
 ; PLAYBACK
 (defconstant +sample-rate+ 44100d0)
 (defconstant +num-channels+ 2)
@@ -107,13 +110,13 @@
   (sin (* hz tm 2 pi)))
 
 (defun tri (hz tm)
-  (to-signed (abs (to-signed (mod (* hz tm) 1)))))
+  (to-signed (abs (to-signed (fract (* hz tm))))))
 
 (defun squ (hz tm)
-  (to-signed (round (mod (* hz tm) 1))))
+  (to-signed (round (fract (* hz tm)))))
 
 (defun saw (hz tm)
-  (to-signed (mod (* hz tm) 1)))
+  (to-signed (fract (* hz tm))))
 
 (defun pulse (hz width tm)
-  (to-signed (floor (+ width (mod (* hz tm) 1)))))
+  (to-signed (floor (+ width (fract (* hz tm))))))
