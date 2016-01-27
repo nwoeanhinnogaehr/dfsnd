@@ -24,9 +24,9 @@
 
 (defun the-sound (tm)
   (mix-frames
-    (loop-beat '#((0 0.2 2) (0 0 0) (2 0.4 3) (1 0.3 7) (1 0.3 5)) 'beep 4/5 tm)
-    (loop-beat '#((1 -50) (0 0) (0.5 -10) (0.25 -40) (0 0)) 'snare 1/4 tm)
-    (loop-beat '#((1 -100) (0 0) (0.25 -100) (1 -70)) 'hat 1/7 tm)
-    (loop-beat '#((1) (0) (0) (0.5) (0) (0.5) (0) (1)) 'kick 1/4 tm)))
+    (loop-beat #((0 0.2 2) (0 0 0) (4 0.4 3) (4 0.3 7) (2 0.3 5)) 'beep 5/4 tm)
+    (loop-beat #((1 -50) (0 0) (0.5 -10) (0.25 -40) (0 0)) 'snare 1/4 tm)
+    (loop-beat #((1 -100) (0 0) (0.25 -100) (1 -70)) 'hat 1/7 tm)
+    (loop-beat #((1) (0) (0) (0.5) (0) (0.5) (0) (1)) 'kick 1/4 tm)))
 
 (write-vec (normalize (sample-region 'the-sound 0.0 12.0)) "out.wav")

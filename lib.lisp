@@ -53,17 +53,18 @@
 (defmethod frame-apply (func (frame list) &rest args)
   (and frame
        (cons (apply func
-                    (cons (car frame)
-                          (map 'list (non-atom-apply 'car) args)))
+                    (car frame)
+                    (map 'list (non-atom-apply 'car) args))
              (apply 'frame-apply
-                    (append (list func (cdr frame))
-                            (map 'list (non-atom-apply 'cdr) args))))))
+                    func
+                    (cdr frame)
+                    (map 'list (non-atom-apply 'cdr) args)))))
 
 (defun fade (frame fader)
   (frame-apply '* frame fader))
 
 (defun sum-frames (&rest frames)
-  (apply 'frame-apply (cons '+ frames)))
+  (apply 'frame-apply '+ frames))
 
 (defun mix-frames (&rest frames)
   (fade (apply 'sum-frames frames) (/ 1 (length frames))))
@@ -88,11 +89,8 @@
 ; SEQUENCING
 (defgeneric sref (seq idx))
 
-(defmethod sref ((seq vector) idx)
-  (aref seq (floor (mod idx (length seq)))))
-
-(defmethod sref ((seq list) idx)
-  (nth (floor (mod idx (length seq))) seq))
+(defmethod sref ((seq sequence) idx)
+  (elt seq (floor (mod idx (length seq)))))
 
 (defmethod sref ((seq function) idx)
   (funcall seq (floor idx)))
