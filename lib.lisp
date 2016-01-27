@@ -85,6 +85,15 @@
 (defun stereo-disperse-tracks (tracks angle)
   (stereo-disperse-tracks* tracks angle (/ 1 (length tracks)) (length tracks)))
 
+; BUFFERING
+(defun make-buffer ()
+  (make-array (floor (* +sample-rate+ 60)) :initial-element nil))
+
+(defun read-buffer (buf tm fallback)
+  (let ((idx (floor (+ (* tm +sample-rate+) (/ (length buf) 2)))))
+    (assert (and (<= 0 idx) (> (length buf) idx)))
+    (or (elt buf idx) (setf (aref buf idx) (funcall fallback tm)))))
+
 ; SEQUENCING
 (defgeneric sref (seq idx))
 

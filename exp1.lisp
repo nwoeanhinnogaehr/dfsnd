@@ -1,5 +1,7 @@
 (load "lib.lisp")
 
+(defparameter buffer (make-buffer))
+
 (defun snare (vel len tm)
   (fade
     (list (noise) (noise))
@@ -29,4 +31,7 @@
     (loop-beat #((1 -100) (0 0) (0.25 -100) (1 -70)) 'hat 0.15 tm)
     (loop-beat #((1) (0) (0) (0.5) (0) (0.5) (0) (1)) 'kick 0.25 tm)))
 
-(write-vec (time (normalize (sample-region 'the-sound 0.0 12.0))) "out.wav")
+(defun buffer-proxy (tm)
+  (read-buffer buffer tm 'the-sound))
+
+(write-vec (time (normalize (sample-region 'buffer-proxy 0.0 12.0))) "out.wav")
