@@ -32,8 +32,7 @@
   (let ((maximum (reduce 'max (map 'list 'abs samples))))
     (if (= 0 maximum)
       samples
-      (loop for frame in samples
-            collect (/ frame maximum)))))
+      (map 'list (lambda (x) (/ x maximum)) samples))))
 
 ; MIXING
 (defun channel-up (x)
