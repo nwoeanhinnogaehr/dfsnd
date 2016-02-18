@@ -1,37 +1,61 @@
 (load "lib.lisp")
 
-(defparameter buffer (make-buffer))
-
-(defun snare (vel len tm)
+(defun snare (tm vel len)
   (fade
     (list (noise) (noise))
     (* vel (expt (+ 1 tm) len))))
 
-(defun hat (vel len tm)
+(defun hat (tm vel len)
   (fade
     (sum-frames (list (max 0.7 (noise)) (max 0.7 (noise))) -0.7)
     (* vel (expt (+ 1 tm) len))))
 
-(defun kick (vel tm)
+(defun kick (tm vel)
   (channel-up
     (fade
       (osc (note-freq (+ (* 4 (expt (+ 1 tm) -50)) -2) 1) tm)
       (* vel (expt (+ 1 tm) -5)))))
 
-(defun beep (note vel spd tm)
-  (let ((hz (note-freq (- note 10) 4)))
+(defun beep (tm vel note)
+  (channel-up
     (fade
-      (stereo-disperse-tracks (list (pulse hz 0.5 tm) (pulse hz (fract tm) tm)) tm)
-      (* vel (to-unsigned (squ spd tm))))))
+      (squ (note-freq note 12 :base 2 :octave -1) tm)
+      (* vel (expt (+ 1 tm) -10)))))
 
-(defun the-sound (tm)
-  (mix-frames
-    (loop-beat #((0 0.2 2) (0 0 0) (4 0.4 3) (4 0.3 7) (2 0.3 5)) 'beep 1.25 tm)
-    (loop-beat #((1 -50) (0 0) (0.5 -10) (0.25 -40) (0 0)) 'snare 0.25 tm)
-    (loop-beat #((1 -100) (0 0) (0.25 -100) (1 -70)) 'hat 0.15 tm)
-    (loop-beat #((1) (0) (0) (0.5) (0) (0.5) (0) (1)) 'kick 0.25 tm)))
+(let*
+  ((buffer (make-buffer))
+   (waitq (make-queue :key 'event-time :ord '<))
+   (playq (make-queue :key 'event-death :ord '<))
+   (triggers (loop for i from 1 below 4
+                   collecting (interval
+                                (/ 1 i)
+                                (let ((i i))
+                                  (lambda (tm idx)
+                                    (queue-push waitq (list (make-event :time (+ tm 0)
+                                                                        :death (+ tm (/ 1 i))
+                                                                        :inst 'beep
+                                                                        :args `(1 ,(mod idx i)))
+                                                            )))))))
+   )
 
-(defun buffer-proxy (tm)
-  (read-buffer buffer tm 'the-sound))
+  (defun the-sound (tm)
+    ; process event triggers
+    (dolist (i triggers)
+      (funcall i tm))
 
-(write-vec (time (normalize (sample-region 'buffer-proxy 0.0 12.0))) "out.wav")
+    ; shuffle queues
+    (queue-push playq (queue-pop waitq tm))
+    (queue-pop playq tm)
+
+    ; compute
+    (reduce 'mix-frames
+            (queue-data playq)
+            :key (lambda (e)
+                   (apply (event-inst e)
+                          (- tm (event-time e))
+                          (event-args e)))))
+
+  (defun buffer-proxy (tm)
+    (read-buffer buffer tm 'the-sound))
+
+  (write-vec (time (normalize (sample-region 'buffer-proxy 0.0 8.0))) "out.wav"))
